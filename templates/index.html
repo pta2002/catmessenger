@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>🐈</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <style>
+            .cat {
+                color: black;
+            }
+            .cat:hover {
+                background: #ccc;
+                font-size: 1.1em;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>🐱 messenger</h1>
+                <small class="text-muted">You can only send cat emojis here. And spaces. And exclamation marks, and question marks, and dashes.</small>
+            </header>
+            <div id="vue-app">
+                <div class="card">
+                    <div class="card-block">
+                        <ul>
+                            <li v-for="message in messages">
+                                {{ message }}
+                            </li>
+                        </ul>
+                        <div class="row">
+                            <div class="col-xs-12 input-group">
+                                <input @keyup.enter="send" @input="validate" type="text" v-model="inputtext" class="form-control" placeholder="cats">
+                                <a @click="send" href="#" class="btn btn-primary input-group-addon">Submit</a>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <a href="#" @click="input(index, $event)" v-for="(cat, index) in emojis" class="cat card col-sm text-center btn btn-default" style="color: black;">
+                                {{ cat }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="https://unpkg.com/vue/dist/vue.js"></script>
+        <script type="text/javascript">
+            var socket = io();
+
+            var regexAstralSymbols = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
+
+            function countSymbols(string) {
+            	return string
+            		// Replace every surrogate pair with a BMP symbol.
+            		.replace(regexAstralSymbols, '_')
+            		// …and *then* get the length.
+            		.length;
+            }
+
+            function getSymbols(string) {
+            	var index = 0;
+            	var length = string.length;
+            	var output = [];
+            	for (; index < length - 1; ++index) {
+            		var charCode = string.charCodeAt(index);
+            		if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+            			charCode = string.charCodeAt(index + 1);
+            			if (charCode >= 0xDC00 && charCode <= 0xDFFF) {
+            				output.push(string.slice(index, index + 2));
+            				++index;
+            				continue;
+            			}
+            		}
+            		output.push(string.charAt(index));
+            	}
+            	output.push(string.charAt(index));
+            	return output;
+            }
+
+            socket.on('chat', function(msg) {
+                app.messages.push(msg);
+            })
+
+            var app = new Vue({
+                el: '#vue-app',
+                data: {
+                    messages: [],
+                    emojis: ['🐈','🐱','😹','😼','😿','😸','😽','😾','😻','😺','🙀'],
+                    inputtext: '',
+                },
+                methods: {
+                    send: function() {
+                        console.log(this.inputtext);
+                        socket.emit('chat', this.inputtext.trim());
+                        this.inputtext = '';
+                    },
+                    input: function(i, e) {
+                        this.inputtext += this.emojis[i]; // TODO: Add in cursor pos
+                    },
+                    validate: function() {
+                        var tmp = '';
+                        var tmp2 = getSymbols(this.inputtext);
+                        var em = this.emojis + [' ','!','?','-'];
+                        tmp2.forEach(function(symbol) {
+                            if (em.indexOf(symbol) >= 0)
+                                tmp += symbol;
+                        });
+                        this.inputtext = tmp;
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
